@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const connect = require('./database');
+require("dotenv").config();
 
 connect();
 const app = express();
@@ -15,6 +16,6 @@ app.get('/', function (req, res) {
 
 app.use('/authenticate', require('./routes/authentication'))
 
-app.listen(port, () => {
+app.listen(process.env.PORT ||port, () => {
     console.log(`Backend listening on port`)
 });
