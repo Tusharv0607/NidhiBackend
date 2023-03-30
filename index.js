@@ -15,7 +15,9 @@ app.get('/', function (req, res) {
 });
 
 app.use('/authenticate', require('./routes/authentication'))
+app.use('/admin', require('./routes/adminAccess'))
+app.use('/user', require('./routes/userAccess'))
 
-app.listen(process.env.PORT ||port, () => {
+app.listen(process.env.PORT || port, () => {
     console.log(`Backend listening on port`)
 });

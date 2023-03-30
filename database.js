@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
-const mongoURI = ('mongodb+srv://TusharV:987654321@cluster0.h6oli1k.mongodb.net/test')
+require("dotenv").config();
+
+const mongoURI = process.env.DB;
 
 const connect = () => {
     mongoose.set('strictQuery', false)
