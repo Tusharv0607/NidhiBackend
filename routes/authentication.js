@@ -7,10 +7,10 @@ const User = require('../models/user')
 const Token = require("../models/token");
 const sendEmail = require("../utils/sendEmail");
 const crypto = require("crypto");
-const Joi = require("joi");
 
 const { body, validationResult } = require('express-validator');
-const JWT_SECRET = "**********";
+const Transactions = require('../models/transactions');
+const JWT_SECRET = process.env.JWTSECRET;
 
 //------------------------------------------------------------------------------//
 //Endpoint for sign up with validation using Express and MongoDB
@@ -46,6 +46,11 @@ router.post('/signUp',
           username: req.body.username,
           email: req.body.email,
           password: hash, //Saving hashed password
+        });
+
+        const transactions = await Transactions.create({
+           userId: user._id,
+           transactions: []
         });
 
         const data = {

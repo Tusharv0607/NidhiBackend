@@ -1,16 +1,16 @@
 var jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWTSECRET;
 
-const fetchUser = (req,res,next) => {
+const verifyAdmin = (req,res,next) => {
 
     const token = req.header('auth-token');
     if (!token) {
-        res.status(401).send({ error: "Please Login or SignUp First" });
+        res.status(401).send({ error: "Can't Access...Admin only privilages" });
     }
 
     try {
         const data = jwt.verify(token, JWT_SECRET);
-        req.user = data.user;
+        req.admin = data.admin;
         next();
     }
     catch (error) {
@@ -18,4 +18,4 @@ const fetchUser = (req,res,next) => {
     }
 }
 
-module.exports = fetchUser;
+module.exports = verifyAdmin;
