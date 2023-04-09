@@ -165,7 +165,7 @@ router.post('/reset',
   });
 //------------------------------------------------------------------------------//
 
-router.post('password-reset/:userId/:token',
+router.post('/password-reset/:userId/:token',
   [
     body('password').isLength({ min: 5 }),
   ],
@@ -177,8 +177,11 @@ router.post('password-reset/:userId/:token',
       return res.status(400).json({ errors: errors.array() });
     }
 
-    try {
-      const user = await User.findById(req.params.userId);
+    try 
+    {
+      const _id = req.params.userId;
+
+      const user = await User.findById({_id});
       if (!user) return res.status(400).send("invalid link or expired");
 
       const token = await Token.findOne({
@@ -188,10 +191,13 @@ router.post('password-reset/:userId/:token',
 
       if (!token) return res.status(400).send("Invalid link or expired");
 
-      user.password = req.body.password;
+      const salt = await bcrypt.genSalt(10); //Generating salt for hashing
+      const hash = await bcrypt.hash(req.body.password, salt); //Hashing the password
+
+      user.password = hash;
       await user.save();
       await token.delete();
-
+    
       res.send("password reset sucessfully.");
 
     }

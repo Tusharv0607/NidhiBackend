@@ -3,8 +3,9 @@ const BankDetails = require('../models/bankdetails');
 const verifyAdmin = require('../middleware/verifyAdmin.js')
 const router = express.Router();
 const User = require('../models/user')
+const WithdrawRequest = require('../models/withdrawRequest')
 const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator')
 const Transactions = require('../models/transactions');
 require("dotenv").config();
 const JWT_SECRET = process.env.JWTSECRET;
@@ -222,6 +223,92 @@ router.put('/editLockedAmt',
 
       // Returns error response for internal server error
       res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+//------------------------------------------------------------------------------//
+// Route that handles GET requests for beneficiaries
+
+router.get('/getBeneficiaries',
+  verifyAdmin, // Middleware that authenticates admin
+  [
+    body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
+  ],
+  async (req, res) => {
+    try {
+      const userId = req.body.userId; // Extracting user ID from request body
+
+      const benefs = await Beneficiaries.findOne({ userId }); // Finding beneficiaries associated with the user
+
+      if (benefs) { // If beneficiaries are found, return them in the response
+        return res.status(200).json(benefs.beneficiaries);
+      }
+
+      res.status(404).json({ error: "No beneficiaries added" }); // Otherwise, return a 404 error indicating no beneficiaries were found
+    }
+    // Catch block to handle errors
+    catch (error) {
+      console.log("Error:", error.message); // Log the error message to the console for debugging purposes
+      res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
+    }
+  });
+
+//------------------------------------------------------------------------------//
+router.get('/getAllRequests',
+  verifyAdmin,
+  async (req, res) => {
+    //Getting user details after login
+    try {
+      let requests = await WithdrawRequest.find({});
+      res.send(requests);
+    }
+    //Catching it there is an internal error
+    catch (error) {
+      console.log("Error");
+      res.status(500).json({ error: "Internal Server error" });
+    }
+  });
+
+//------------------------------------------------------------------------------//
+router.post('/handleWithdrawRequest',
+  verifyAdmin,
+  [
+    body('userId', 'Invalid user ID').isLength({ min: 10 })
+  ],
+  async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      const [withRequest, transact] = await Promise.all([
+        WithdrawRequest.findOne({ userId }),
+        Transactions.findOne({ userId })
+      ]);
+
+      if (!withRequest) {
+        return res.status(404).json("No withdraw request for the user at this moment");
+      }
+
+      const newDisbursed = withRequest.amount + transact.disbursedAmt;
+      const newAvail = transact.availToWithdraw - newDisbursed;
+
+      const newTransact = { 
+        amount: withRequest.amount, 
+        status: "Processed" 
+      }
+
+      const updatedTransact = await Transactions.findOneAndUpdate(
+        { userId },
+        { availToWithdraw: newAvail, disbursedAmt: newDisbursed, $push: { transactions: newTransact }},
+        { new: true }
+      );
+      
+      await WithdrawRequest.findOneAndDelete({userId});
+
+      res.status(200).json(updatedTransact);
+    }
+    catch (error) {
+      console.log("Error:", error.message);
+      res.status(500).json({ error: "Internal Server error" });
     }
   });
 

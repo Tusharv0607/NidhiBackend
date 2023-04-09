@@ -11,14 +11,33 @@ const bankdSchema = new Schema({
         type: String,
         required: true
     },
+    MobileNo: {
+        type: Number,
+        required: true
+    },
+    AccountNo: {
+        type: String,
+        unique: true,
+        required: true,
+    },
+    Address: {
+        type: String,
+        required: true
+    },
+    State:{
+        type: String,
+        required: true
+    },
+    ZIP: {
+        type: Number,
+        required: true
+    },
     BankName: {
         type: String,
         required: true,
     },
-
-    AccountNo: {
+    BranchName: {
         type: String,
-        unique: true,
         required: true,
     },
     IFSC: {
@@ -26,7 +45,6 @@ const bankdSchema = new Schema({
         unique: true,
         required: true,
     },
-
     Type: {
         type: String,
         required: true
