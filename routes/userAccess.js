@@ -34,7 +34,6 @@ router.post('/addBankDetails',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      //Creating new note
       const { userId, AccHolderName, MobileNo, Address, State, ZIP, BankName, BranchName, AccountNo, IFSC, Type } = req.body;
 
       const details = new BankDetails({

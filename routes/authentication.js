@@ -62,7 +62,9 @@ router.post('/signUp',
         const token = jwt.sign(data, JWT_SECRET); //Creating JWT token
         const username = user.username;
         const email = user.email;
-        res.status(200).json({ token, username, email }) //Returning user details & token after successful registration
+        const userId = user._id;
+
+        res.status(200).json({ token, username, email,  userId}) //Returning user details & token after successful registration
       }
     }
     catch (error) {
@@ -110,7 +112,8 @@ router.post('/login',
       const token = jwt.sign(data, JWT_SECRET); //Creating JWT token
       const username = user.username;
       const Email = user.email;
-      res.status(200).json({ token, username, Email }) //Returning user details & token after successful login
+      const userId = user._id;
+      res.status(200).json({ token, username, Email, userId }) //Returning user details & token after successful login
     }
     //Catching it there is an internal error
     catch (error) {
