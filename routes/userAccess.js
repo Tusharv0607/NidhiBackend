@@ -25,7 +25,7 @@ router.post('/addBankDetails',
     body('Type', 'Please select your bank account type').isLength({ min: 7 })
   ],
   async (req, res) => {
-   // try
+    try
     {
       //Fetching errors of validation
       const errors = validationResult(req);
@@ -34,7 +34,6 @@ router.post('/addBankDetails',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      //Creating new note
       const { userId, AccHolderName, MobileNo, Address, State, ZIP, BankName, BranchName, AccountNo, IFSC, Type } = req.body;
 
       const details = new BankDetails({
@@ -55,10 +54,40 @@ router.post('/addBankDetails',
       res.status(200).json('Details added successfully');
     }
     //Catching it there is an internal error
-    // catch (error) {
-    //   res.status(500).json({ error: "Internal Server Error" });
-    // }
+    catch (error) {
+      res.status(500).json({ error: "Internal Server Error" });
+    }
   });
+
+  
+//------------------------------------------------------------------------------//
+// Route that handles GET bank details of individual user
+
+router.get('/getBankDetails',
+fetchUser, // Middleware that authenticates and fetches user data
+[
+  body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
+],
+async (req, res) => {
+  try
+   {
+    const userId = req.body.userId; // Extracting user ID from request body
+
+    const details = await BankDetails.findOne({ userId }); // Finding details associated with the user
+
+    if (details) { // If details are found, return them in the response
+      return res.status(200).json(details);
+    }
+
+    res.status(404).json({ error: "Details Not Added Yet.." }); // Otherwise, return a 404 error indicating no details were added
+  }
+  // // Catch block to handle errors
+  catch (error) {
+    console.log("Error:", error.message); // Log the error message to the console for debugging purposes
+    res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
+  }
+});
+
 //------------------------------------------------------------------------------//
 
 router.post('/balanceStatus',
