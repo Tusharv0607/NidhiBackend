@@ -63,7 +63,7 @@ router.post('/addBankDetails',
 //------------------------------------------------------------------------------//
 // Route that handles GET bank details of individual user
 
-router.get('/getBankDetails',
+router.post('/getBankDetails',
 fetchUser, // Middleware that authenticates and fetches user data
 [
   body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
