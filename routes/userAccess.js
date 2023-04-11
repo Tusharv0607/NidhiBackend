@@ -253,7 +253,7 @@ router.post('/addBeneficiary',
 //------------------------------------------------------------------------------//
 // Route that handles GET requests for beneficiaries
 
-router.get('/getBeneficiaries',
+router.post('/getBeneficiaries',
   fetchUser, // Middleware that authenticates and fetches user data
   [
     body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
