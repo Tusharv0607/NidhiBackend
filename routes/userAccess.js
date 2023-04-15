@@ -7,6 +7,10 @@ const BankDetails = require('../models/bankdetails');
 const WithdrawRequest = require('../models/withdrawRequest');
 const Beneficiaries = require('../models/beneficiary');
 const { body, validationResult } = require('express-validator');
+const UserKYC = require('../models/userKYC');
+const transactions = require('../models/transactions');
+const withdrawRequest = require('../models/withdrawRequest');
+const beneficiary = require('../models/beneficiary');
 
 //------------------------------------------------------------------------------//
 
@@ -15,9 +19,9 @@ router.post('/addBankDetails',
   [
     body('userId', 'Invalid ID').isLength({ min: 8 }),
     body('AccHolderName', 'Enter a valid name').isLength({ min: 3 }),
-    body('MobileNo', "Invalid Mobile Number").isLength({min: 10}),
+    body('MobileNo', "Invalid Mobile Number").isLength({ min: 10 }),
     body('AccountNo', 'Enter a valid acc no.').isLength({ min: 10 }),
-    body('Address', "Enter correct address").isLength({min: 3}),
+    body('Address', "Enter correct address").isLength({ min: 3 }),
     body('ZIP', "Enter a correct postal code").isLength(6),
     body('BankName', 'enter a valid bank name').isLength({ min: 2 }),
     body('BranchName', 'enter a valid branch name').isLength({ min: 2 }),
@@ -25,8 +29,7 @@ router.post('/addBankDetails',
     body('Type', 'Please select your bank account type').isLength({ min: 7 })
   ],
   async (req, res) => {
-    try
-    {
+    try {
       //Fetching errors of validation
       const errors = validationResult(req);
 
@@ -59,34 +62,106 @@ router.post('/addBankDetails',
     }
   });
 
-  
+//------------------------------------------------------------------------------//
+// Endpoint for updating bank details
+router.put('/updateBankDetails',
+  // Middleware for validating login
+  fetchUser,
+  [
+    // Request body validation checks using 'express-validator' library
+    body('userId', 'Invalid ID').isLength({ min: 8 }),
+    body('AccHolderName', 'Enter a valid name').isLength({ min: 3 }),
+    body('MobileNo', "Invalid Mobile Number").isLength({ min: 10 }),
+    body('AccountNo', 'Enter a valid acc no.').isLength({ min: 10 }),
+    body('Address', "Enter correct address").isLength({ min: 3 }),
+    body('ZIP', "Enter a correct postal code").isLength(6),
+    body('BankName', 'enter a valid bank name').isLength({ min: 2 }),
+    body('BranchName', 'enter a valid branch name').isLength({ min: 2 }),
+    body('IFSC', 'IFSC invalid').isLength({ min: 4 }),
+    body('Type', 'Please select your bank account type').isLength({ min: 7 })
+  ],
+  async (req, res) => {
+    try {
+      // Validating request inputs and fetching any errors with the request
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // Destructuring request body 
+      const {
+        userId,
+        AccHolderName,
+        MobileNo,
+        Address,
+        State,
+        ZIP,
+        BankName,
+        BranchName,
+        AccountNo,
+        IFSC,
+        Type
+      } = req.body;
+
+      // Updating the bank details in the database
+      const details = await BankDetails.findOneAndUpdate(
+        { userId }, // Query for finding bank details of the user
+        { // New bank details to be updated in database
+          AccHolderName,
+          MobileNo,
+          AccountNo,
+          Address,
+          State,
+          ZIP,
+          BankName,
+          BranchName,
+          IFSC,
+          Type
+        },
+        { new: true } // Options for returning the updated document instead of the original one
+      ).exec();
+
+      // If no bank details were found for the user, return an error response
+      if (!details) {
+        return res.status(404).json({ error: "Bank details not found" });
+      }
+
+      // Return success response
+      res.status(200).json('Details updated successfully');
+    } catch (error) {
+      // Catching any internal server errors and returning the error response
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
 //------------------------------------------------------------------------------//
 // Route that handles GET bank details of individual user
 
-router.get('/getBankDetails',
-fetchUser, // Middleware that authenticates and fetches user data
-[
-  body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
-],
-async (req, res) => {
-  try
-   {
-    const userId = req.body.userId; // Extracting user ID from request body
+router.post('/getBankDetails',
+  fetchUser, // Middleware that authenticates and fetches user data
+  [
+    body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
+  ],
+  async (req, res) => {
+    try {
+      const userId = req.body.userId; // Extracting user ID from request body
 
-    const details = await BankDetails.findOne({ userId }); // Finding details associated with the user
+      const details = await BankDetails.findOne({ userId }); // Finding details associated with the user
 
-    if (details) { // If details are found, return them in the response
-      return res.status(200).json(details);
+      if (details) { // If details are found, return them in the response
+        return res.status(200).json(details);
+      }
+
+      res.status(404).json({ error: "Details Not Added Yet.." }); // Otherwise, return a 404 error indicating no details were added
     }
-
-    res.status(404).json({ error: "Details Not Added Yet.." }); // Otherwise, return a 404 error indicating no details were added
-  }
-  // // Catch block to handle errors
-  catch (error) {
-    console.log("Error:", error.message); // Log the error message to the console for debugging purposes
-    res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
-  }
-});
+    // // Catch block to handle errors
+    catch (error) {
+      console.log("Error:", error.message); // Log the error message to the console for debugging purposes
+      res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
+    }
+  });
 
 //------------------------------------------------------------------------------//
 
@@ -143,13 +218,12 @@ router.post(
   fetchUser,
   [
     // Validating user ID and amount parameters
-    body('userId', 'Invalid ID').isLength({ min: 8 }),
-    body('amount', "Enter a valid amount").isNumeric()
+    body('userId', 'Invalid ID').isLength({ min: 8 })
   ],
 
   async (req, res) => {
     try {
-      const { userId, amount } = req.body;
+      const { userId } = req.body;
 
       // Validate request parameters using express-validator
       const errors = validationResult(req);
@@ -168,13 +242,9 @@ router.post(
 
       // Checking if bank details exist for user
       const bankdetails = await BankDetails.findOne({ userId });
+
       if (!bankdetails) {
         return res.status(404).json({ error: "Bank Details Not Added, Can't Proceed Further..." });
-      }
-
-      // Checking if user has sufficient balance for requested amount
-      if (amount > transaction.availToWithdraw) {
-        return res.status(400).json({ error: "Insufficient Balance. Can't Withdraw" });
       }
 
       // Checking if there is already a pending request
@@ -186,19 +256,99 @@ router.post(
       // Creating withdrawal request and returning success response with result
       const withdrawRequest = await WithdrawRequest.create({
         userId,
-        amount,
+        amount: transaction.availToWithdraw,
       });
 
       res.status(200).json(withdrawRequest);
     }
     catch (error) {
       console.error(error.message);
-
       // Returns error response for internal server error
       res.status(500).json({ error: "Internal Server Error" }); //return error response if there is any internal server error
     }
   }
 );
+
+//------------------------------------------------------------------------------//
+// Endpoint for updating KYC details
+
+router.put('/updateKYC',
+  // Middleware for validating login
+  fetchUser,
+  [
+    // Request body validation checks using 'express-validator' library
+    body('userId', 'Invalid ID').isLength({ min: 8 }),
+    body('AccHolderName', 'Invalid Name').isLength({ min: 2 }),
+    body('MobileNo', 'Enter a valid name').isLength(10),
+    body('PAN', "Invalid PAN No.").isLength(10),
+    body('Aadhar', "Invalid Aadhar No.").isLength(12),
+  ],
+  async (req, res) => {
+    try {
+      // Validating request inputs and fetching any errors with the request
+      const errors = validationResult(req);
+
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      // Destructuring request body 
+      const {
+        userId,
+        AccHolderName,
+        MobileNo,
+        PAN,
+        Aadhar
+      } = req.body;
+
+      // Updating the bank details in the database
+      const KYCDetails = await UserKYC.findOneAndUpdate(
+        { userId }, // Query for finding KYC details of the user
+        { // New KYC details to be updated in database
+          AccHolderName,
+          MobileNo,
+          PAN,
+          Aadhar
+        },
+        { upsert: true, new: true },
+      ).exec();
+
+      // Return success response
+      res.status(200).json('KYC details updated successfully');
+    }
+    catch (error) {
+      // Catching any internal server errors and returning the error response
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  }
+);
+
+//------------------------------------------------------------------------------//
+// Route that handles GET requests for users KYC details
+
+router.post('/getKycDetails',
+  fetchUser, // Middleware that authenticates and fetches user data
+  [
+    body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
+  ],
+  async (req, res) => {
+    try {
+      const userId = req.body.userId; // Extracting user ID from request body
+
+      const kycDets = await UserKYC.findOne({ userId }); // Finding KYC details associated with the user
+
+      if (kycDets) { // If details are found, return them in the response
+        return res.status(200).json(kycDets);
+      }
+
+      res.status(404).json({ error: "KYC not updated" }); // Otherwise, return a 404 error indicating no details added
+    }
+    // Catch block to handle errors
+    catch (error) {
+      console.log("Error:", error.message); // Log the error message to the console for debugging purposes
+      res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
+    }
+  });
 
 //------------------------------------------------------------------------------//
 // Route that handles POST requests to add a beneficiary
@@ -253,7 +403,7 @@ router.post('/addBeneficiary',
 //------------------------------------------------------------------------------//
 // Route that handles GET requests for beneficiaries
 
-router.get('/getBeneficiaries',
+router.post('/getBeneficiaries',
   fetchUser, // Middleware that authenticates and fetches user data
   [
     body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
@@ -279,14 +429,13 @@ router.get('/getBeneficiaries',
 
 //------------------------------------------------------------------------------//
 
-router.get('/getTransactions',
+router.post('/getTransactions',
   fetchUser, // Middleware that authenticates and fetches user data
   [
     body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
   ],
   async (req, res) => {
-    try 
-    {
+    try {
       const userId = req.body.userId; // Extracting user ID from request body
 
       const transacs = await Transactions.findOne({ userId }); // Finding transactions associated with the user
@@ -303,6 +452,37 @@ router.get('/getTransactions',
       res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
     }
   });
+
+//------------------------------------------------------------------------------//
+
+router.delete('/deleteUser',
+  fetchUser, // Middleware that authenticates and fetches user data
+  [ // Body validation middleware that checks if userId is at least 10 characters long
+    body('userId', 'Invalid user ID').isLength({ min: 10 })
+  ],
+  async (req, res) => {
+    try {
+      const { userId } = req.body; // Destructuring from request body
+
+      // Using Promise.all() to perform all delete operations in parallel.
+      await Promise.all([
+        transactions.findOneAndDelete({ userId }),
+        UserKYC.findOneAndDelete({ userId }),
+        BankDetails.findOneAndDelete({ userId }),
+        withdrawRequest.findOneAndDelete({ userId }),
+        Beneficiaries.findOneAndDelete({ userId }),
+        User.findByIdAndDelete(userId)
+      ]);
+
+      res.status(200).json({ message: "User deleted successfully" }); // Return a success message indicating the user was successfully deleted
+    }
+    // Catch block to handle errors
+    catch (error) {
+      console.log("Error:", error.message); // Log the error message to the console for debugging purposes
+      res.status(500).json({ error: "Internal Server error" }); // Return a 500 error indicating there was an internal server error
+    }
+  }
+);
 
 //------------------------------------------------------------------------------//
 

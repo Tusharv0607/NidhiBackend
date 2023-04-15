@@ -18,7 +18,7 @@ const JWT_SECRET = process.env.JWTSECRET;
 router.post('/signUp',
   [
     body('email').isEmail(), //Checks if Email is in correct format
-    body('username').isLength({ min: 5 }), //Checks the length of the Username
+    body('username').isLength({ min: 2 }), //Checks the length of the Username
     body('password').isLength({ min: 5 }), //Checks the length of the Password
   ],
   async (req, res) => {

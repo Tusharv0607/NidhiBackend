@@ -7,7 +7,7 @@ const transactSchema = new Schema({
         required: true,
         ref: "user",
         unique: true // Add unique index
-    },
+    }, 
     bankDetailsAdded: {
         type: Boolean,
         required: true,
