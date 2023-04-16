@@ -12,56 +12,6 @@ const transactions = require('../models/transactions');
 const withdrawRequest = require('../models/withdrawRequest');
 
 //------------------------------------------------------------------------------//
-
-router.post('/addBankDetails',
-  fetchUser,               //Validating login using middleware
-  [
-    body('userId', 'Invalid ID').isLength({ min: 8 }),
-    body('AccHolderName', 'Enter a valid name').isLength({ min: 3 }),
-    body('MobileNo', "Invalid Mobile Number").isLength({ min: 10 }),
-    body('AccountNo', 'Enter a valid acc no.').isLength({ min: 10 }),
-    body('Address', "Enter correct address").isLength({ min: 3 }),
-    body('ZIP', "Enter a correct postal code").isLength(6),
-    body('BankName', 'enter a valid bank name').isLength({ min: 2 }),
-    body('BranchName', 'enter a valid branch name').isLength({ min: 2 }),
-    body('IFSC', 'IFSC invalid').isLength({ min: 4 }),
-    body('Type', 'Please select your bank account type').isLength({ min: 7 })
-  ],
-  async (req, res) => {
-    try {
-      //Fetching errors of validation
-      const errors = validationResult(req);
-
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
-
-      const { userId, AccHolderName, MobileNo, Address, State, ZIP, BankName, BranchName, AccountNo, IFSC, Type } = req.body;
-
-      const details = new BankDetails({
-        userId,
-        AccHolderName,
-        MobileNo,
-        AccountNo,
-        Address,
-        State,
-        ZIP,
-        BankName,
-        BranchName,
-        IFSC,
-        Type
-      })
-
-      await details.save();
-      res.status(200).json('Details added successfully');
-    }
-    //Catching it there is an internal error
-    catch (error) {
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  });
-
-//------------------------------------------------------------------------------//
 // Endpoint for updating bank details
 router.put('/updateBankDetails',
   // Middleware for validating login
@@ -117,7 +67,7 @@ router.put('/updateBankDetails',
           IFSC,
           Type
         },
-        { new: true } // Options for returning the updated document instead of the original one
+        { upsert: true, new: true } // Options for returning the updated document instead of the original one
       ).exec();
 
       // If no bank details were found for the user, return an error response
