@@ -10,7 +10,6 @@ const { body, validationResult } = require('express-validator');
 const UserKYC = require('../models/userKYC');
 const transactions = require('../models/transactions');
 const withdrawRequest = require('../models/withdrawRequest');
-const beneficiary = require('../models/beneficiary');
 
 //------------------------------------------------------------------------------//
 
@@ -88,7 +87,6 @@ router.put('/updateBankDetails',
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
-
       // Destructuring request body 
       const {
         userId,
@@ -454,7 +452,6 @@ router.post('/getTransactions',
   });
 
 //------------------------------------------------------------------------------//
-
 router.delete('/deleteUser',
   fetchUser, // Middleware that authenticates and fetches user data
   [ // Body validation middleware that checks if userId is at least 10 characters long
