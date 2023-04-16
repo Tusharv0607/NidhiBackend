@@ -18,7 +18,6 @@ const beneficiarySchema = new Schema({
         },
         AccountNo: {
             type: String,
-            unique: true,
             required: true,
         },
         Address: {
@@ -43,7 +42,6 @@ const beneficiarySchema = new Schema({
         },
         IFSC: {
             type: String,
-            unique: true,
             required: true,
         },
         Type: {
