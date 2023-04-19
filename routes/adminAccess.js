@@ -9,6 +9,7 @@ const { body, validationResult } = require('express-validator')
 const Transactions = require('../models/transactions');
 require("dotenv").config();
 const JWT_SECRET = process.env.JWTSECRET;
+const Beneficiaries = require('../models/beneficiary')
 
 //------------------------------------------------------------------------------//
 //Endpoint for Login with validation using Express and MongoDB
@@ -96,6 +97,50 @@ router.post('/getBankDetails',
   });
 //------------------------------------------------------------------------------//
 
+router.post('/getBalanceStatus',
+  verifyAdmin,
+  [
+    body('email', 'Enter a valid email').isEmail(), //Checks if Email is in correct format
+  ],
+  async (req, res) => {
+    //Fetching errors of validation
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+      const { email } = req.body;
+      //Finding the user using email ID
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(404).json({ error: "Input correct crediantials" });
+      }
+
+      const transacs = await Transactions.findOne({ userId: user._id });
+
+      const data = {
+        blocked: transacs.isBlocked,
+        alloted: transacs.allotedAmt,
+        locked: transacs.lockedAmt,
+        disbursed: transacs.disbursedAmt,
+        available: transacs.availToWithdraw
+      }
+
+      res.status(200).send(data);
+
+    }
+    //Catching it there is an internal error
+    catch (error) {
+      console.log("Internal Server Error");
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+//------------------------------------------------------------------------------//
+
 router.put('/blockUser',
   verifyAdmin,
   [
@@ -118,16 +163,22 @@ router.put('/blockUser',
       }
 
       const userId = user._id;
-      const transaction = await Transactions.findOneAndUpdate({ userId }, { isBlocked: true }, { new: true })
-      res.status(200).json("updates");
+      const transaction = await Transactions.findOne({ userId });
+
+      const blocked = transaction.isBlocked;
+      const transact = await Transactions.findOneAndUpdate({ userId }, { isBlocked: !blocked }, { new: true })
+
+      res.status(200).json("updated changes");
     }
     catch (error) {
       console.error(error.message);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
+
 //------------------------------------------------------------------------------//
 // Defines a PUT route for editing allotted amount of user account
+
 router.put('/editAllotedAmt',
   verifyAdmin, // Middleware function to verify if the user is an admin
   [
@@ -146,6 +197,9 @@ router.put('/editAllotedAmt',
       // Extracts email and amount from request body
       const { email, amount } = req.body;
 
+      if (amount <= 0) {
+        return res.status(400).json({ error: "Enter amount greater than zero" });
+      }
       // Finds user with given email
       const user = await User.findOne({ email });
 
@@ -156,10 +210,15 @@ router.put('/editAllotedAmt',
 
       // Finds transaction record associated with the user id and updates the allotted amount
       const userId = user._id;
-      const transaction = await Transactions.findOneAndUpdate({ userId }, { allotedAmt: amount }, { new: true })
+      const transaction = await Transactions.findOne({ userId });
+      
+      const currAlloted = transaction.allotedAmt;
+      const newAlloted = (+currAlloted)+(+amount);
+
+      const newTransac = await Transactions.findOneAndUpdate({userId}, {allotedAmt: newAlloted}, { new: true });
 
       // Calculates available balance for withdrawal based on allotted amount, locked amount and disbursed amount
-      const availToWithdraw = transaction.allotedAmt - transaction.lockedAmt - transaction.disbursedAmt;
+      const availToWithdraw = newTransac.allotedAmt - newTransac.lockedAmt - newTransac.disbursedAmt;
 
       // Updates the available balance for withdrawal in the transaction record
       await Transactions.findOneAndUpdate({ userId }, { availToWithdraw: availToWithdraw }, { new: true });
@@ -197,6 +256,10 @@ router.put('/editLockedAmt',
       // Extracts email and amount from request body
       const { email, amount } = req.body;
 
+      if (amount <= 0) {
+        return res.status(400).json({ error: "Enter amount greater than zero" });
+      }
+
       // Finds user with given email
       const user = await User.findOne({ email });
 
@@ -232,11 +295,25 @@ router.put('/editLockedAmt',
 router.post('/getBeneficiaries',
   verifyAdmin, // Middleware that authenticates admin
   [
-    body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
+    body('email', 'Enter a valid email').isEmail(), //Checks if Email is in correct format    
   ],
   async (req, res) => {
+    //Fetching errors of validation
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try {
-      const userId = req.body.userId; // Extracting user ID from request body
+      const { email } = req.body;
+
+      const user = await User.findOne({ email });
+
+      if (!user) {
+        return res.status(400).json({ error: "Input correct crediantials" });
+      }
+
+      const userId = user._id;
 
       const benefs = await Beneficiaries.findOne({ userId }); // Finding beneficiaries associated with the user
 
@@ -254,6 +331,7 @@ router.post('/getBeneficiaries',
   });
 
 //------------------------------------------------------------------------------//
+
 router.get('/getAllRequests',
   verifyAdmin,
   async (req, res) => {
@@ -273,11 +351,21 @@ router.get('/getAllRequests',
 router.post('/handleWithdrawRequest',
   verifyAdmin,
   [
-    body('userId', 'Invalid user ID').isLength({ min: 10 })
+    body('email', 'Enter a valid email').isEmail(), //Checks if Email is in correct format    
   ],
   async (req, res) => {
+    //Fetching errors of validation
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
     try {
-      const { userId } = req.body;
+      const { email } = req.body;
+
+      const user = await User.findOne({ email });
+
+      const userId = user._id;
 
       const [withRequest, transact] = await Promise.all([
         WithdrawRequest.findOne({ userId }),
@@ -288,21 +376,22 @@ router.post('/handleWithdrawRequest',
         return res.status(404).json("No withdraw request for the user at this moment");
       }
 
-      const newDisbursed = withRequest.amount + transact.disbursedAmt;
-      const newAvail = transact.availToWithdraw - newDisbursed;
 
-      const newTransact = { 
-        amount: withRequest.amount, 
-        status: "Processed" 
+      const newDisbursed = withRequest.amount + transact.disbursedAmt;
+      const newAvail = transact.allotedAmt-transact.lockedAmt-withRequest.amount-transact.disbursedAmt;
+
+      const newTransact = {
+        amount: withRequest.amount,
+        status: "Processed"
       }
 
       const updatedTransact = await Transactions.findOneAndUpdate(
         { userId },
-        { availToWithdraw: newAvail, disbursedAmt: newDisbursed, $push: { transactions: newTransact }},
+        { availToWithdraw: newAvail, disbursedAmt: newDisbursed, $push: { transactions: newTransact } },
         { new: true }
       );
-      
-      await WithdrawRequest.findOneAndDelete({userId});
+
+      await WithdrawRequest.findOneAndDelete({ userId });
 
       res.status(200).json(updatedTransact);
     }

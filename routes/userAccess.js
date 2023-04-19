@@ -21,13 +21,13 @@ router.put('/updateBankDetails',
     body('userId', 'Invalid ID').isLength({ min: 8 }),
     body('AccHolderName', 'Enter a valid name').isLength({ min: 3 }),
     body('MobileNo', "Invalid Mobile Number").isLength({ min: 10 }),
-    body('AccountNo', 'Enter a valid acc no.').isLength({ min: 10 }),
+    body('AccountNo', 'Enter a valid acc no.').isLength({ min: 6 }),
     body('Address', "Enter correct address").isLength({ min: 3 }),
     body('ZIP', "Enter a correct postal code").isLength(6),
     body('BankName', 'enter a valid bank name').isLength({ min: 2 }),
     body('BranchName', 'enter a valid branch name').isLength({ min: 2 }),
     body('IFSC', 'IFSC invalid').isLength({ min: 4 }),
-    body('Type', 'Please select your bank account type').isLength({ min: 7 })
+    body('Type', 'Please select your bank account type').isLength({ min: 4 })
   ],
   async (req, res) => {
     try {
@@ -116,7 +116,7 @@ router.post('/getBankDetails',
 router.post('/balanceStatus',
   fetchUser, // Middleware function to verify if the user is an admin
   [
-    body('email', 'Enter a valid email').isEmail(), // Validates if Email is of correct format      
+    body('userId', 'Invalid user ID').isLength({ min: 10 }) // Body validation middleware that checks if userId is at least 10 characters long
   ],
   async (req, res) => {
     try {
@@ -126,20 +126,15 @@ router.post('/balanceStatus',
         return res.status(400).json({ errors: errors.array() });
       }
 
-      // Extracts email and amount from request body
-      const { email } = req.body;
+      // Extracts userId from body
+      const { userId } = req.body;
 
-      // Finds user with given email
-      const user = await User.findOne({ email });
+      const transaction = await Transactions.findOne({ userId }) //find transactions record for this user id
 
       // Returns error response if user not found
-      if (!user) {
-        return res.status(400).json({ error: "Input correct crediantials" }); //return error response when user not found
+      if (!transaction) {
+        return res.status(400).json({ error: "Input correct crediantials" }); //return error response when transactions not found
       }
-
-      // Finds transaction record associated with the user id and updates the allotted amount
-      const userId = user._id; //get the user Id of current user
-      const transaction = await Transactions.findOne({ userId }) //find transactions record for this user id
 
       const data = {
         allotedAmt: transaction.allotedAmt,
@@ -148,7 +143,7 @@ router.post('/balanceStatus',
         disburseAmt: transaction.disbursedAmt
       }
 
-      // Returns success response with amounts details
+      // Returns success response with amount details
       res.status(200).json(data);
     }
     catch (error) {
@@ -188,6 +183,9 @@ router.post(
         return res.status(400).json({ error: "User is blocked. Can't request withdrawal..." });
       }
 
+      if(transaction.availToWithdraw<=0){
+        return res.status(400).json({ error: "You have no available balance to withdraw" });
+      }
       // Checking if bank details exist for user
       const bankdetails = await BankDetails.findOne({ userId });
 
