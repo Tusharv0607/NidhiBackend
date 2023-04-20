@@ -163,12 +163,10 @@ router.put('/blockUser',
       }
 
       const userId = user._id;
-      const transaction = await Transactions.findOne({ userId });
 
-      const blocked = transaction.isBlocked;
-      const transact = await Transactions.findOneAndUpdate({ userId }, { isBlocked: !blocked }, { new: true })
+      const transact = await Transactions.findOneAndUpdate({ userId }, { isBlocked: true }, { new: true })
 
-      res.status(200).json("updated changes");
+      res.status(200).json("User is blocked permanently");
     }
     catch (error) {
       console.error(error.message);
@@ -351,21 +349,19 @@ router.get('/getAllRequests',
 router.post('/handleWithdrawRequest',
   verifyAdmin,
   [
-    body('email', 'Enter a valid email').isEmail(), //Checks if Email is in correct format    
+    // Validating user ID and amount parameters
+    body('userId', 'Invalid ID').isLength({ min: 8 })
   ],
+
   async (req, res) => {
-    //Fetching errors of validation
-    const errors = validationResult(req);
-
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
     try {
-      const { email } = req.body;
+      const { userId } = req.body;
 
-      const user = await User.findOne({ email });
-
-      const userId = user._id;
+      // Validate request parameters using express-validator
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() }); //If there are any validation errors return bad request error response
+      }
 
       const [withRequest, transact] = await Promise.all([
         WithdrawRequest.findOne({ userId }),
