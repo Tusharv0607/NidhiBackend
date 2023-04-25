@@ -195,9 +195,6 @@ router.put('/editAllotedAmt',
       // Extracts email and amount from request body
       const { email, amount } = req.body;
 
-      if (amount <= 0) {
-        return res.status(400).json({ error: "Enter amount greater than zero" });
-      }
       // Finds user with given email
       const user = await User.findOne({ email });
 
@@ -253,10 +250,6 @@ router.put('/editLockedAmt',
     try {
       // Extracts email and amount from request body
       const { email, amount } = req.body;
-
-      if (amount <= 0) {
-        return res.status(400).json({ error: "Enter amount greater than zero" });
-      }
 
       // Finds user with given email
       const user = await User.findOne({ email });
